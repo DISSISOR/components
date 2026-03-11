@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 set( srcs
     src/main.cc
+    src/PodArray.cc
+    src/World.cc
 )
 include_directories(inc)
 
