@@ -148,6 +148,7 @@ private:
     Page& createOrGetPage(size_t index);
 };
 
+template <typename T>
 class PropertyHandle {
 public:
     PropertyHandle(int offset): offset(offset) {}
@@ -156,13 +157,72 @@ private:
     int offset;
 };
 
+class PropertyHandleUntyped {
+public:
+    PropertyHandleUntyped(int offset): offset(offset) {}
+    int getOffset() const { return offset; }
+private:
+    int offset;
+};
+
+
 class World {
 public:
-    PropertyHandle addProperty(const std::string& name, size_t elemSize);
+    template<typename T>
+    PropertyHandle<T> addProperty(const std::string& name) {
+        if constexpr (std::is_same_v<T, void> || std::is_empty_v<T>)
+        {
+            return addProperty<T>(Property(name, 0));
+        }
+        else {
+            return addProperty<T>(Property(name, sizeof(T)));
+        }
+    }
     EntityHandle newEntity();
 
-    Property& property(PropertyHandle h);
+    template<typename T>
+    Property& property(PropertyHandle<T> h) {
+        return properties[h.getOffset()];
+    }
+
+    Property& propertyUntyped(PropertyHandleUntyped h) {
+        return properties[h.getOffset()];
+    }
+
     void deleteEntity(EntityIdx eIdx);
+
+    template<typename T>
+    Property::Iterator<T> getItForProp(PropertyHandle<T> h) {
+        return property(h).template getIterator<T>();
+    }
+
+    template<typename T>
+    T* getPropForEntt(PropertyHandle<T> h, EntityIdx idx) {
+        return property(h).template getForEntity<T>(idx);
+    }
+
+    template<typename T>
+    const T* getPropForEntt(PropertyHandle<T> h, EntityIdx idx) const {
+        return property(h).template getForEntity<T>(idx);
+    }
+
+    template<typename T>
+    T* getPropForEntt(PropertyHandle<T> h, EntityHandle e) {
+        if (isEntityAlive(e))
+            return property(h).template getForEntity<T>(e.offset);
+        return nullptr;
+    }
+
+    template<typename T>
+    const T* getPropForEntt(PropertyHandle<T> h, EntityHandle e) const {
+        if (isEntityAlive(e))
+            return property(h).template getForEntity<T>(e.offset);
+        return nullptr;
+    }
+
+    bool isEntityAlive(EntityHandle e) const {
+        return entities[e.offset].generation == e.generation;
+    }
 
 private:
     void returnEntity(EntityIdx eIdx);
@@ -170,7 +230,11 @@ private:
     std::vector<Entity> entities;
     std::vector<char> tmpBuffer;
     int freeEntity = -1;
-    PropertyHandle addProperty(Property &&comps);
+    template<typename T>
+    PropertyHandle<T> addProperty(Property &&comps) {
+        properties.emplace_back(std::move(comps));
+        return { static_cast<int>(properties.size()) - 1  };
+    }
 };
 
 #endif // World_hh_INCLUDED

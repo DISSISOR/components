@@ -65,10 +65,6 @@ Property::Page::~Page() {
 Property::Page::Page(Page&& ot):
     data(std::exchange(ot.data, nullptr)) {}
 
-PropertyHandle World::addProperty(const std::string& name, size_t elemSize) {
-    return addProperty(Property(name, elemSize));
-}
-
 EntityHandle World::newEntity() {
     if (freeEntity < 0)
     {
@@ -96,11 +92,3 @@ void World::returnEntity(EntityIdx eIdx) {
     freeEntity = eIdx;
 }
 
-Property& World::property(PropertyHandle h) {
-    return properties[h.getOffset()];
-}
-
-PropertyHandle World::addProperty(Property &&comps) {
-    properties.emplace_back(std::move(comps));
-    return { static_cast<int>(properties.size()) - 1  };
-}

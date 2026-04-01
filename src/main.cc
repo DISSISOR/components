@@ -31,12 +31,12 @@ struct Actor {
 struct Player {
 };
 
-PropertyHandle posProp = getWorld()->addProperty("pos", sizeof(SDL_FPoint));
-PropertyHandle colorProp = getWorld()->addProperty("color", sizeof(SDL_Color));
-PropertyHandle playerProp = getWorld()->addProperty("player", sizeof(Player));
-PropertyHandle actorProp = getWorld()->addProperty("actor", sizeof(Actor));
-PropertyHandle lifetimeProp = getWorld()->addProperty("lifetime", sizeof(uint64_t));
-PropertyHandle removeProp = getWorld()->addProperty("removeFlag", 0); // why zero sized props work?
+auto posProp = getWorld()->addProperty<SDL_FPoint>("pos");
+auto colorProp = getWorld()->addProperty<SDL_Color>("color");
+auto playerProp = getWorld()->addProperty<Player>("player");
+auto actorProp = getWorld()->addProperty<Actor>("actor");
+auto lifetimeProp = getWorld()->addProperty<uint64_t>("lifetime");
+auto removeProp = getWorld()->addProperty<void>("removeFlag"); // why zero sized props work?
 
 World& world = *getWorld();
 
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
         uint64_t now = SDL_GetTicks();
         uint64_t passed = now - prev;
 
-        auto lifetimeIt = world.property(lifetimeProp).getIterator<uint64_t>();
+        auto lifetimeIt = world.getItForProp(lifetimeProp);
         while (lifetimeIt.hasNext()) {
             auto [time, eIdx] = lifetimeIt.get();
             // UNSIGNED, be careful with overflow
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
             lifetimeIt.next();
         }
 
-        auto playerPos = world.property(posProp).getForEntity<SDL_FPoint>(playerEnt);
+        auto playerPos = world.getPropForEntt(posProp, playerEnt); 
         SDL_assert(playerPos);
         if (isKeyJustPressed(SDL_SCANCODE_S)) {
             playerPos->y += 1;
@@ -116,10 +116,10 @@ int main(int argc, char** argv) {
 // Render
         SDL_SetRenderDrawColor(rend, 255, 255, 255, 255);
         SDL_RenderClear(rend);
-        auto posIterator = world.property(posProp).getIterator<SDL_FPoint>();
+        auto posIterator = world.getItForProp(posProp);
         for (; posIterator.hasNext(); posIterator.next()) {
             auto [pos, eIdx] = posIterator.get();
-            const SDL_Color* color = world.property(colorProp).getForEntity<SDL_Color>(eIdx);
+            const SDL_Color* color = world.getPropForEntt(colorProp, eIdx); 
             if (!color) continue;
             SDL_SetRenderDrawColor(rend, color->r, color->g, color->b, color->a);
             const SDL_FRect rect = {pos->x, pos->y, 100, 100};
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
         }
         SDL_RenderPresent(rend);
 
-        auto removeIt = world.property(removeProp).getIterator<void>();
+        auto removeIt = world.getItForProp(removeProp);
         while (removeIt.hasNext()) {
             EntityIdx idx = removeIt.get();
             world.deleteEntity(idx);
